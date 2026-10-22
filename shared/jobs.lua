@@ -1,4 +1,5 @@
 -- grades are 0-indexed. boss = can manage the job (for your own boss menus)
+-- defaultDuty = false makes players start each session off duty (default: on duty)
 Config.Jobs = {
     unemployed = {
         label = 'Unemployed',

@@ -31,6 +31,8 @@ function Core.CreatePlayer(src, license, group, row)
     if not (Config.Jobs[job.name] and Config.Jobs[job.name].grades[job.grade]) then
         job = { name = 'unemployed', grade = 0 }
     end
+    -- duty isn't saved: every session starts on the job's default (on duty unless defaultDuty = false)
+    job.onduty = Config.Jobs[job.name].defaultDuty ~= false
     if not Core.IsValidGroup(group) then group = Config.DefaultGroup end
 
     -----------------------------------------------------------------------
@@ -105,7 +107,15 @@ function Core.CreatePlayer(src, license, group, row)
             gradeLabel = grade.label,
             salary = grade.salary or 0,
             boss = grade.boss or false,
+            onduty = job.onduty,
         }
+    end
+
+    local function jobUpdated(old)
+        local new = self.getJob()
+        Player(src).state:set('job', new, true)
+        TriggerClientEvent('rps_core:client:setJob', src, new)
+        TriggerEvent('rps_core:server:jobChanged', src, new, old)
     end
 
     function self.setJob(name, grade)
@@ -114,13 +124,17 @@ function Core.CreatePlayer(src, license, group, row)
         if not def or not def.grades[grade] then return false end
 
         local old = self.getJob()
-        job = { name = name, grade = grade }
-        local new = self.getJob()
-
-        Player(src).state:set('job', new, true)
-        TriggerClientEvent('rps_core:client:setJob', src, new)
-        TriggerEvent('rps_core:server:jobChanged', src, new, old)
+        job = { name = name, grade = grade, onduty = def.defaultDuty ~= false }
+        jobUpdated(old)
         return true
+    end
+
+    function self.setDuty(onduty)
+        onduty = onduty and true or false
+        if job.onduty == onduty then return end
+        local old = self.getJob()
+        job.onduty = onduty
+        jobUpdated(old)
     end
 
     -----------------------------------------------------------------------
@@ -157,6 +171,7 @@ function Core.CreatePlayer(src, license, group, row)
     function self.setMeta(key, value)
         metadata[key] = value
         TriggerClientEvent('rps_core:client:setMeta', src, key, value)
+        TriggerEvent('rps_core:server:metaChanged', src, key, value)
     end
 
     -----------------------------------------------------------------------
@@ -204,6 +219,7 @@ function Core.CreatePlayer(src, license, group, row)
     local state = Player(src).state
     state:set('job', self.getJob(), true)
     state:set('group', group, true)
+    state:set('isLoggedIn', true, true) -- read by QB/Qbox scripts through the bridges
 
     return self
 end

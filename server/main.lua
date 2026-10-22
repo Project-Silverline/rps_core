@@ -27,6 +27,74 @@ function Core.IsValidGroup(name)
     return false
 end
 
+-- 1 = lowest group; nil for unknown names
+function Core.GroupRank(name)
+    for i, g in ipairs(Config.Groups) do
+        if g == name then return i end
+    end
+end
+
+-- true if the player's group is `group` or higher (groups inherit downwards)
+function Core.HasGroup(src, group)
+    local player = Core.GetPlayer(src)
+    local have, need = player and Core.GroupRank(player.getGroup()), Core.GroupRank(group)
+    return have ~= nil and need ~= nil and have >= need
+end
+
+---------------------------------------------------------------------------
+-- Usable items
+-- ox_inventory hands items with no client/server export of their own to its
+-- bridge's server.UseItem, which calls Core.UseItem. Callbacks are registered
+-- here by rps resources and by the QB / ESX / Qbox bridges, each in their own
+-- calling style.
+---------------------------------------------------------------------------
+Core.UsableItems = {} -- [name] = { cb = function, style = 'rps' | 'qb' | 'esx', resource = string }
+
+-- resource: who owns the callback. Defaults to the resource calling in, which is
+-- also right when a bridge forwards a script's registration.
+function Core.RegisterUsableItem(name, cb, style, resource)
+    Core.UsableItems[name] = {
+        cb = cb,
+        style = style or 'rps',
+        resource = resource or GetInvokingResource() or GetCurrentResourceName(),
+    }
+end
+
+-- A stopped resource's callbacks are dead references: drop them, whichever
+-- bridge registered them
+AddEventHandler('onResourceStop', function(resource)
+    for name, entry in pairs(Core.UsableItems) do
+        if entry.resource == resource then Core.UsableItems[name] = nil end
+    end
+end)
+
+function Core.CanUseItem(name)
+    return Core.UsableItems[name] ~= nil
+end
+
+-- data is ox_inventory's slot: { name, label, count, slot, metadata, weight }.
+-- Callbacks run in their own thread: they often wait (progress bars, database),
+-- and this is reached through an export, which can't yield back to its caller.
+function Core.UseItem(src, name, data)
+    local entry = Core.UsableItems[name]
+    if not entry then return false end
+
+    CreateThread(function()
+        if entry.style == 'qb' then
+            entry.cb(src, {
+                name = data.name, label = data.label, amount = data.count, count = data.count,
+                info = data.metadata or {}, metadata = data.metadata or {}, slot = data.slot, weight = data.weight,
+            })
+        elseif entry.style == 'esx' then
+            entry.cb(src, name, data)
+        else
+            entry.cb(src, data)
+        end
+    end)
+
+    return true
+end
+
 -- Group inheritance: admin -> mod -> user
 for i = #Config.Groups, 2, -1 do
     lib.addPrincipal(('group.%s'):format(Config.Groups[i]), ('group.%s'):format(Config.Groups[i - 1]))
@@ -79,6 +147,7 @@ function Core.UnloadPlayer(src)
     local state = Player(src).state
     state:set('job', nil, true)
     state:set('group', nil, true)
+    state:set('isLoggedIn', false, true)
 
     TriggerEvent('rps_core:server:playerUnloaded', src, player.charId)
 end
