@@ -17,6 +17,9 @@ end)
 
 exports('HasGroup', Core.HasGroup)
 
+-- Notify(source, message, type?, duration?, title?) or Notify(source, libNotifyTable); source -1 = everyone
+exports('Notify', Core.Notify)
+
 -- Usable items (see server/main.lua). style: 'rps' (default), 'qb' or 'esx'
 exports('RegisterUsableItem', Core.RegisterUsableItem)
 exports('CanUseItem', Core.CanUseItem)

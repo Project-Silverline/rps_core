@@ -6,9 +6,16 @@ Core = {
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
-function Core.Notify(src, msg, notifyType)
-    if src == 0 then return print(('[rps_core] %s'):format(msg)) end
-    TriggerClientEvent('ox_lib:notify', src, { description = msg, type = notifyType or 'inform' })
+-- Same arguments as the client Notify (client/notify.lua): a message plus type,
+-- duration and title, or one lib.notify table. src -1 notifies everyone; 0 prints.
+function Core.Notify(src, msg, notifyType, duration, title)
+    src = tonumber(src)
+    if not src then return end
+    if src == 0 then
+        local text = type(msg) == 'table' and (msg.description or msg.title) or msg
+        return print(('[rps_core] %s'):format(text))
+    end
+    TriggerClientEvent('rps_core:client:notify', src, msg, notifyType, duration, title)
 end
 
 function Core.GetPlayer(src)

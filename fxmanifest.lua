@@ -26,6 +26,9 @@ server_scripts {
     'server/player.lua',
     'server/characters.lua',
     'server/commands.lua',
+    'server/admin.lua',
+    'server/needs.lua',
+    'server/stress.lua',
     'server/exports.lua',
 
     -- framework bridges (qbx builds on qb, so qb first)
@@ -37,8 +40,13 @@ server_scripts {
 
 client_scripts {
     'client/main.lua',
+    'client/notify.lua',
     'client/spawn.lua',
     'client/characters.lua',
+    'client/commands.lua',
+    'client/admin.lua',
+    'client/needs.lua',
+    'client/stress.lua',
 
     'bridge/qb/client.lua',
     'bridge/qbx/client.lua',
