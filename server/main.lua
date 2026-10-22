@@ -88,8 +88,13 @@ AddEventHandler('playerDropped', function()
 end)
 
 function Core.SaveAll()
-    for _, player in pairs(Core.Players) do
-        player.save()
+    -- Saving waits on the database, and players can load or drop meanwhile,
+    -- so work from a copy and skip anyone unloaded since it was taken.
+    local players = {}
+    for _, player in pairs(Core.Players) do players[#players + 1] = player end
+
+    for _, player in ipairs(players) do
+        if Core.Players[player.source] == player then player.save() end
     end
 end
 

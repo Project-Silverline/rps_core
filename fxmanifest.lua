@@ -4,7 +4,7 @@ lua54 'yes'
 
 name 'rps_core'
 description 'Custom roleplay framework core'
-version '0.3.0'
+version '0.3.1'
 
 shared_scripts {
     '@ox_lib/init.lua',

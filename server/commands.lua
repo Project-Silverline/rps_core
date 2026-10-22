@@ -26,10 +26,11 @@ lib.addCommand('givemoney', {
 }, function(source, args)
     local player = Core.GetPlayer(args.target)
     if not player then return Core.Notify(source, 'That player has no character loaded', 'error') end
-    if not player.addMoney(args.account, args.amount, 'admin') then
+    local amount = math.floor(args.amount)
+    if not player.addMoney(args.account, amount, 'admin') then
         return Core.Notify(source, 'Invalid account or amount', 'error')
     end
-    Core.Notify(source, ('Gave $%d (%s) to %s'):format(args.amount, args.account, player.getName()), 'success')
+    Core.Notify(source, ('Gave $%d (%s) to %s'):format(amount, args.account, player.getName()), 'success')
 end)
 
 lib.addCommand('setgroup', {
