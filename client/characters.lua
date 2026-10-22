@@ -37,18 +37,37 @@ local function createCharacter(dobRange)
     OpenCharacterMenu()
 end
 
-local function selectCharacter(id)
+local function loadCharacter(id)
     local data = lib.callback.await('rps_core:selectCharacter', false, id)
-    if not data then
-        lib.notify({ description = 'Could not load that character', type = 'error' })
-        return OpenCharacterMenu()
-    end
+    if not data then return false end
 
     SpawnPlayer(data)
     PlayerData = data
     IsLoaded = true
     TriggerEvent('rps_core:client:playerLoaded', PlayerData)
+    return true
 end
+
+local function selectCharacter(id)
+    if not loadCharacter(id) then
+        lib.notify({ description = 'Could not load that character', type = 'error' })
+        OpenCharacterMenu()
+    end
+end
+
+-- A selection resource (rps_multicharacter) replaces the built-in menu when installed.
+-- It loads characters through this event rather than an export, because loading
+-- waits on the server and an export can't yield across resources.
+local function hasSelectionResource()
+    return GetResourceState('rps_multicharacter') ~= 'missing'
+end
+
+AddEventHandler('rps_core:client:selectCharacter', function(id)
+    if IsLoaded then return end
+    if not loadCharacter(id) then
+        TriggerEvent('rps_core:client:selectFailed', id)
+    end
+end)
 
 local function deleteCharacter(char)
     local confirm = lib.alertDialog({
@@ -113,6 +132,10 @@ RegisterNetEvent('rps_core:client:logout', function()
     IsLoaded = false
     TriggerEvent('rps_core:client:playerUnloaded')
 
+    if hasSelectionResource() then
+        return TriggerEvent('rps_core:client:openSelection')
+    end
+
     StartSelectionScene()
     OpenCharacterMenu()
 end)
@@ -123,6 +146,9 @@ CreateThread(function()
     if GetResourceState('spawnmanager') == 'started' then
         exports.spawnmanager:setAutoSpawn(false)
     end
+
+    -- the selection resource opens itself on join
+    if hasSelectionResource() then return end
 
     StartSelectionScene()
     OpenCharacterMenu()

@@ -82,7 +82,7 @@ lib.callback.register('rps_core:getCharacters', function(src)
     if not license then return end
 
     local chars = MySQL.query.await(
-        'SELECT id, firstname, lastname, dob, sex, job FROM characters WHERE license = ? ORDER BY id',
+        'SELECT id, firstname, lastname, dob, sex, job, job_grade, accounts FROM characters WHERE license = ? ORDER BY id',
         { license })
 
     return chars, Config.MaxCharacters, dobRange()
