@@ -12,7 +12,39 @@ local function daysInMonth(y, m)
     return DAYS_IN_MONTH[m]
 end
 
-local function validDob(s)
+-- Birth years a new character may have: at least MinAge, at most 100
+local function dobRange()
+    local year = tonumber(os.date('%Y'))
+    return {
+        min = ('%04d-01-01'):format(year - 100),
+        max = ('%04d-12-31'):format(year - Config.MinAge),
+    }
+end
+
+-- ox_lib's date input sends the player's local midnight as a JS timestamp in ms,
+-- and the client sends its UTC offset in minutes. os.date can't handle dates
+-- before 1970 on Windows, so days since the epoch are turned into a date by hand
+-- (Howard Hinnant's civil_from_days).
+local function dateFromTimestamp(ms, tz)
+    ms = tonumber(ms)
+    if not ms or ms ~= ms or ms == math.huge or ms == -math.huge then return end
+    tz = math.floor(tonumber(tz) or 0)
+    if tz < -14 * 60 or tz > 14 * 60 then tz = 0 end
+    -- +12h absorbs daylight saving differences between the birth date and today
+    local days = (math.floor(ms / 1000) + tz * 60 + 43200) // 86400 + 719468
+    local era = days // 146097
+    local doe = days - era * 146097
+    local yoe = (doe - doe // 1460 + doe // 36524 - doe // 146096) // 365
+    local doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
+    local mp = (5 * doy + 2) // 153
+    local d = doy - (153 * mp + 2) // 5 + 1
+    local m = mp < 10 and mp + 3 or mp - 9
+    local y = yoe + era * 400 + (m <= 2 and 1 or 0)
+    return ('%04d-%02d-%02d'):format(y, m, d)
+end
+
+local function validDob(s, tz)
+    if type(s) == 'number' then s = dateFromTimestamp(s, tz) end
     if type(s) ~= 'string' then return end
     local y, m, d = s:match('^(%d%d%d%d)%-(%d%d)%-(%d%d)$')
     y, m, d = tonumber(y), tonumber(m), tonumber(d)
@@ -53,7 +85,7 @@ lib.callback.register('rps_core:getCharacters', function(src)
         'SELECT id, firstname, lastname, dob, sex, job FROM characters WHERE license = ? ORDER BY id',
         { license })
 
-    return chars, Config.MaxCharacters
+    return chars, Config.MaxCharacters, dobRange()
 end)
 
 lib.callback.register('rps_core:createCharacter', guarded(function(src, data)
@@ -61,7 +93,7 @@ lib.callback.register('rps_core:createCharacter', guarded(function(src, data)
     local license = getLicense(src)
 
     local firstname, lastname = cleanName(data.firstname), cleanName(data.lastname)
-    local dob = validDob(data.dob)
+    local dob = validDob(data.dob, data.tz)
     local sex = (data.sex == 'm' or data.sex == 'f') and data.sex or nil
     if not (license and firstname and lastname and dob and sex) then
         return false, 'Invalid character details'

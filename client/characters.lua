@@ -1,8 +1,24 @@
-local function createCharacter()
+-- Minutes this machine's clock is ahead of UTC. The date picker sends local
+-- midnight as a timestamp, so the server needs this to get the right day.
+local function utcOffsetMinutes()
+    local ok, y1, mo1, d1, h1, mi1 = pcall(GetLocalTime)
+    local ok2, y2, mo2, d2, h2, mi2 = pcall(GetUtcTime)
+    if not (ok and ok2 and y1 and y2) then return 0 end
+
+    local offset = (h1 - h2) * 60 + (mi1 - mi2)
+    local localDay, utcDay = y1 * 10000 + mo1 * 100 + d1, y2 * 10000 + mo2 * 100 + d2
+    if localDay > utcDay then offset = offset + 1440 elseif localDay < utcDay then offset = offset - 1440 end
+    return offset
+end
+
+-- dobRange = { min = 'YYYY-MM-DD', max = 'YYYY-MM-DD' } from the server, so the
+-- picker only offers dates the server will accept
+local function createCharacter(dobRange)
     local input = lib.inputDialog('New character', {
         { type = 'input', label = 'First name', required = true, min = 2, max = 20 },
         { type = 'input', label = 'Last name', required = true, min = 2, max = 20 },
-        { type = 'input', label = 'Date of birth', placeholder = 'YYYY-MM-DD', required = true, min = 10, max = 10 },
+        { type = 'date', label = 'Date of birth', icon = 'calendar', required = true, format = 'DD/MM/YYYY',
+            min = dobRange and dobRange.min, max = dobRange and dobRange.max },
         { type = 'select', label = 'Sex', required = true, options = {
             { value = 'm', label = 'Male' },
             { value = 'f', label = 'Female' },
@@ -11,7 +27,7 @@ local function createCharacter()
 
     if input then
         local ok, err = lib.callback.await('rps_core:createCharacter', false, {
-            firstname = input[1], lastname = input[2], dob = input[3], sex = input[4],
+            firstname = input[1], lastname = input[2], dob = input[3], tz = utcOffsetMinutes(), sex = input[4],
         })
         if not ok then
             lib.notify({ description = type(err) == 'string' and err or 'Could not create character', type = 'error' })
@@ -50,7 +66,7 @@ local function deleteCharacter(char)
 end
 
 function OpenCharacterMenu()
-    local chars, max = lib.callback.await('rps_core:getCharacters', false)
+    local chars, max, dobRange = lib.callback.await('rps_core:getCharacters', false)
     if not chars then return end
 
     local options = {}
@@ -77,7 +93,7 @@ function OpenCharacterMenu()
     end
 
     if #chars < max then
-        options[#options + 1] = { title = 'Create character', icon = 'plus', onSelect = createCharacter }
+        options[#options + 1] = { title = 'Create character', icon = 'plus', onSelect = function() createCharacter(dobRange) end }
     end
 
     lib.registerContext({
