@@ -25,12 +25,5 @@ Config.DefaultModel = {
 
 Config.DefaultSpawn = vec4(-269.4, -955.3, 31.2, 205.0)
 
--- Camera shown behind the character selection menu
-Config.SelectionScene = {
-    coords = vec3(-150.0, -1010.0, 120.0),
-    rot = vec3(-15.0, 0.0, 330.0),
-    fov = 60.0,
-}
-
 Config.SaveInterval = 5 * 60 * 1000      -- ms
 Config.PaycheckInterval = 15 * 60 * 1000 -- ms

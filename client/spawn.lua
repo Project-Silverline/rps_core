@@ -1,37 +1,4 @@
-local cam
-
-function StartSelectionScene()
-    local scene = Config.SelectionScene
-    local ped = PlayerPedId()
-
-    SetEntityCoordsNoOffset(ped, scene.coords.x, scene.coords.y, scene.coords.z, false, false, false)
-    FreezeEntityPosition(ped, true)
-    SetEntityVisible(ped, false, false)
-    SetEntityInvincible(ped, true)
-
-    if not cam then
-        cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA',
-            scene.coords.x, scene.coords.y, scene.coords.z,
-            scene.rot.x, scene.rot.y, scene.rot.z, scene.fov, false, 0)
-    end
-    SetCamActive(cam, true)
-    RenderScriptCams(true, false, 0, true, true)
-    DisplayRadar(false)
-
-    ShutdownLoadingScreen()
-    ShutdownLoadingScreenNui()
-    DoScreenFadeIn(500)
-end
-
-local function stopSelectionScene()
-    if cam then
-        RenderScriptCams(false, false, 0, true, true)
-        DestroyCam(cam, false)
-        cam = nil
-    end
-    DisplayRadar(true)
-end
-
+-- Called once rps_multicharacter has closed its scene and camera
 function SpawnPlayer(data)
     DoScreenFadeOut(500)
     while not IsScreenFadedOut() do Wait(0) end
@@ -54,7 +21,7 @@ function SpawnPlayer(data)
     local timeout = GetGameTimer() + 5000
     while not HasCollisionLoadedAroundEntity(ped) and GetGameTimer() < timeout do Wait(0) end
 
-    stopSelectionScene()
+    DisplayRadar(true)
     SetEntityVisible(ped, true, false)
     SetEntityInvincible(ped, false)
     FreezeEntityPosition(ped, false)
